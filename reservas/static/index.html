@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reserva de canchas</title>
+<style>
+  :root {
+    --fondo: #f1f4f2;
+    --panel: #ffffff;
+    --tinta: #17262b;
+    --suave: #5b6b70;
+    --linea: #cbd5d0;
+    --verde: #1e6b57;
+    --verde-osc: #14503f;
+    --arcilla: #b94a31;
+    --ocupado: #e6e9e7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #101a1d; --panel: #18262a; --tinta: #e8efec; --suave: #98a9a8;
+      --linea: #2c3f43; --verde: #3fa58a; --verde-osc: #6cc7ad; --arcilla: #ee8467; --ocupado: #223237;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--fondo); color: var(--tinta);
+    font: 16px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  h1, h2 { letter-spacing: -0.02em; margin: 0; }
+  h1 { font-size: 1.35rem; }
+  h2 { font-size: 1.15rem; margin-bottom: 1rem; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    padding: 1rem clamp(1rem, 4vw, 2.5rem); border-bottom: 1px solid var(--linea); background: var(--panel);
+  }
+  .marca { display: flex; align-items: center; gap: .6rem; }
+  .marca svg { width: 28px; height: 28px; }
+  #sesion { display: flex; align-items: center; gap: .8rem; color: var(--suave); }
+
+  main { flex: 1; width: 100%; max-width: 1040px; margin: 0 auto; padding: 2rem clamp(1rem, 4vw, 2.5rem); }
+  .panel { background: var(--panel); border: 1px solid var(--linea); border-radius: 10px; padding: 1.5rem; }
+
+  /* Acceso */
+  #vista-acceso { max-width: 420px; margin: 3vh auto 0; }
+  .pestanas { display: flex; gap: 1.2rem; border-bottom: 1px solid var(--linea); margin-bottom: 1.2rem; }
+  .pestanas button {
+    background: none; border: 0; padding: .5rem 0; cursor: pointer; color: var(--suave);
+    border-bottom: 3px solid transparent; margin-bottom: -1px; font-weight: 600;
+  }
+  .pestanas button[aria-selected="true"] { color: var(--tinta); border-color: var(--verde); }
+  label { display: block; font-weight: 600; font-size: .92rem; margin: .9rem 0 .3rem; }
+  input[type=text], input[type=email], input[type=password], input[type=date], select {
+    width: 100%; padding: .6rem .7rem; border: 1px solid var(--linea); border-radius: 6px; background: var(--fondo);
+  }
+  .consentimiento { display: flex; gap: .6rem; align-items: flex-start; margin-top: 1rem; font-size: .88rem; color: var(--suave); }
+  .consentimiento input { margin-top: .3rem; }
+  .btn {
+    background: var(--verde); color: #fff; border: 0; border-radius: 6px; padding: .65rem 1.1rem;
+    font-weight: 600; cursor: pointer; margin-top: 1.2rem; width: 100%;
+  }
+  .btn:hover { background: var(--verde-osc); }
+  .btn-texto { background: none; border: 1px solid var(--linea); border-radius: 6px; padding: .35rem .8rem; cursor: pointer; }
+  .btn-texto:hover { border-color: var(--tinta); }
+
+  /* Reservas */
+  #vista-app { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.5rem; align-items: start; }
+  @media (max-width: 800px) { #vista-app { grid-template-columns: 1fr; } }
+  .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: .5rem; margin-top: .4rem; }
+  .hora {
+    padding: .55rem 0; border: 1px solid var(--linea); border-radius: 6px; background: var(--panel);
+    cursor: pointer; font-variant-numeric: tabular-nums; font-weight: 600;
+  }
+  .hora:hover:not(:disabled) { border-color: var(--verde); }
+  .hora[aria-pressed="true"] { background: var(--verde); color: #fff; border-color: var(--verde); }
+  .hora:disabled { background: var(--ocupado); color: var(--suave); cursor: not-allowed; text-decoration: line-through; }
+  .leyenda { font-size: .85rem; color: var(--suave); margin-top: .6rem; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  .item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 0; border-bottom: 1px solid var(--linea); }
+  .item:last-child { border-bottom: 0; }
+  .item strong { display: block; }
+  .item span { color: var(--suave); font-size: .92rem; }
+  .cancelar { color: var(--arcilla); border-color: var(--arcilla); }
+  .vacio { color: var(--suave); }
+
+  #mensaje { min-height: 1.5rem; margin-top: .8rem; font-weight: 600; }
+  #mensaje.error { color: var(--arcilla); }
+  #mensaje.ok { color: var(--verde); }
+  footer { padding: 1rem; text-align: center; color: var(--suave); font-size: .85rem; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marca">
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="color:var(--verde)">
+      <rect x="2" y="6" width="28" height="20" rx="2"/><line x1="16" y1="6" x2="16" y2="26"/><circle cx="16" cy="16" r="4"/>
+    </svg>
+    <h1>Reserva de canchas</h1>
+  </div>
+  <div id="sesion" hidden>
+    <span id="nombre-usuario"></span>
+    <button class="btn-texto" id="salir" type="button">Cerrar sesión</button>
+  </div>
+</header>
+
+<main>
+  <!-- Acceso -->
+  <section id="vista-acceso" class="panel">
+    <div class="pestanas" role="tablist">
+      <button role="tab" id="tab-login" aria-selected="true" type="button">Iniciar sesión</button>
+      <button role="tab" id="tab-registro" aria-selected="false" type="button">Crear cuenta</button>
+    </div>
+
+    <form id="form-login" novalidate>
+      <label for="l-email">Correo</label>
+      <input id="l-email" type="email" autocomplete="email" required>
+      <label for="l-pass">Contraseña</label>
+      <input id="l-pass" type="password" autocomplete="current-password" required>
+      <button class="btn" type="submit">Iniciar sesión</button>
+    </form>
+
+    <form id="form-registro" hidden novalidate>
+      <label for="r-nombre">Nombre</label>
+      <input id="r-nombre" type="text" autocomplete="name" maxlength="80" required>
+      <label for="r-email">Correo</label>
+      <input id="r-email" type="email" autocomplete="email" maxlength="120" required>
+      <label for="r-pass">Contraseña (mínimo 8 caracteres)</label>
+      <input id="r-pass" type="password" autocomplete="new-password" minlength="8" required>
+      <div class="consentimiento">
+        <input id="r-acepta" type="checkbox">
+        <label for="r-acepta" style="margin:0;font-weight:400">
+          Autorizo el tratamiento de mis datos personales (nombre y correo) para gestionar mis reservas,
+          conforme a la Ley 1581 de 2012.
+        </label>
+      </div>
+      <button class="btn" type="submit">Crear cuenta</button>
+    </form>
+    <div id="mensaje-acceso" class="mensaje" role="status" aria-live="polite" style="min-height:1.5rem;margin-top:.8rem;font-weight:600"></div>
+  </section>
+
+  <!-- Aplicación -->
+  <div id="vista-app" hidden>
+    <section class="panel">
+      <h2>Nueva reserva</h2>
+      <div class="fila">
+        <div>
+          <label for="recurso">Cancha</label>
+          <select id="recurso"></select>
+        </div>
+        <div>
+          <label for="fecha">Fecha</label>
+          <input id="fecha" type="date">
+        </div>
+      </div>
+      <label id="lbl-horas">Hora</label>
+      <div class="horas" id="horas" role="group" aria-labelledby="lbl-horas"></div>
+      <p class="leyenda">Las horas tachadas ya están reservadas.</p>
+      <button class="btn" id="reservar" type="button">Reservar</button>
+      <div id="mensaje" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Mis reservas</h2>
+      <ul id="lista"></ul>
+      <p class="vacio" id="vacio" hidden>Aún no tienes reservas. Elige una cancha, una fecha y una hora.</p>
+    </section>
+  </div>
+</main>
+
+<footer>Atendido por la instancia: <span id="instancia">…</span></footer>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let horaElegida = null;
+let HORAS = [];
+
+/* ---------- Cliente de API ---------- */
+async function api(ruta, metodo = "GET", cuerpo) {
+  const opciones = { method: metodo, headers: { "X-Requested-With": "fetch" }, credentials: "same-origin" };
+  if (cuerpo !== undefined) {
+    opciones.headers["Content-Type"] = "application/json";
+    opciones.body = JSON.stringify(cuerpo);
+  }
+  const r = await fetch(ruta, opciones);
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(datos.error || "Error inesperado");
+  return datos;
+}
+
+function avisar(el, texto, tipo) {
+  el.textContent = texto;
+  el.className = tipo || "";
+  if (el.id === "mensaje") el.classList.add(tipo || "");
+}
+
+/* ---------- Acceso ---------- */
+function mostrarPestana(registro) {
+  $("form-login").hidden = registro;
+  $("form-registro").hidden = !registro;
+  $("tab-login").setAttribute("aria-selected", String(!registro));
+  $("tab-registro").setAttribute("aria-selected", String(registro));
+  $("mensaje-acceso").textContent = "";
+}
+$("tab-login").onclick = () => mostrarPestana(false);
+$("tab-registro").onclick = () => mostrarPestana(true);
+
+$("form-login").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const u = await api("/api/login", "POST", { email: $("l-email").value, password: $("l-pass").value });
+    entrar(u);
+  } catch (err) { avisarAcceso(err.message); }
+};
+
+$("form-registro").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const u = await api("/api/registro", "POST", {
+      nombre: $("r-nombre").value, email: $("r-email").value,
+      password: $("r-pass").value, acepta_datos: $("r-acepta").checked,
+    });
+    entrar(u);
+  } catch (err) { avisarAcceso(err.message); }
+};
+
+function avisarAcceso(texto) {
+  const el = $("mensaje-acceso");
+  el.textContent = texto;
+  el.style.color = "var(--arcilla)";
+}
+
+$("salir").onclick = async () => {
+  await api("/api/logout", "POST", {});
+  location.reload();
+};
+
+/* ---------- Aplicación ---------- */
+async function entrar(usuario) {
+  $("vista-acceso").hidden = true;
+  $("vista-app").hidden = false;
+  $("sesion").hidden = false;
+  $("nombre-usuario").textContent = usuario.nombre;
+
+  const cfg = await api("/api/config");
+  HORAS = cfg.horas;
+  const sel = $("recurso");
+  sel.replaceChildren(...cfg.recursos.map((r) => new Option(r, r)));
+
+  const hoy = new Date();
+  const iso = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  $("fecha").min = iso;
+  $("fecha").value = iso;
+
+  await Promise.all([cargarHoras(), cargarReservas()]);
+}
+
+async function cargarHoras() {
+  horaElegida = null;
+  const cont = $("horas");
+  let ocupadas = [];
+  try {
+    const d = await api(`/api/disponibilidad?recurso=${encodeURIComponent($("recurso").value)}&fecha=${$("fecha").value}`);
+    ocupadas = d.ocupadas;
+  } catch (_) { /* fecha vacía: se muestran todas libres */ }
+
+  cont.replaceChildren(...HORAS.map((h) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "hora";
+    b.textContent = `${String(h).padStart(2, "0")}:00`;
+    b.disabled = ocupadas.includes(h);
+    b.setAttribute("aria-pressed", "false");
+    b.onclick = () => {
+      horaElegida = h;
+      cont.querySelectorAll(".hora").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+    };
+    return b;
+  }));
+}
+$("recurso").onchange = cargarHoras;
+$("fecha").onchange = cargarHoras;
+
+async function cargarReservas() {
+  const rs = await api("/api/reservas");
+  const lista = $("lista");
+  $("vacio").hidden = rs.length > 0;
+  lista.replaceChildren(...rs.map((r) => {
+    const li = document.createElement("li");
+    li.className = "item";
+    const info = document.createElement("div");
+    const t = document.createElement("strong");
+    t.textContent = r.recurso;
+    const s = document.createElement("span");
+    s.textContent = `${r.fecha} · ${String(r.hora).padStart(2, "0")}:00`;
+    info.append(t, s);
+    const b = document.createElement("button");
+    b.className = "btn-texto cancelar";
+    b.type = "button";
+    b.textContent = "Cancelar";
+    b.onclick = async () => {
+      try {
+        await api(`/api/reservas/${r.id}`, "DELETE");
+        avisar($("mensaje"), "Reserva cancelada", "ok");
+        await Promise.all([cargarReservas(), cargarHoras()]);
+      } catch (err) { avisar($("mensaje"), err.message, "error"); }
+    };
+    li.append(info, b);
+    return li;
+  }));
+}
+
+$("reservar").onclick = async () => {
+  if (horaElegida === null) return avisar($("mensaje"), "Elige una hora disponible", "error");
+  try {
+    await api("/api/reservas", "POST", { recurso: $("recurso").value, fecha: $("fecha").value, hora: horaElegida });
+    avisar($("mensaje"), "Reserva creada", "ok");
+  } catch (err) { avisar($("mensaje"), err.message, "error"); }
+  await Promise.all([cargarReservas(), cargarHoras()]);
+};
+
+/* ---------- Inicio ---------- */
+(async () => {
+  try { $("instancia").textContent = (await (await fetch("/health")).json()).instancia; } catch (_) {}
+  try { entrar(await api("/api/me")); } catch (_) { /* sin sesión: se muestra el acceso */ }
+})();
+</script>
+</body>
+</html>
